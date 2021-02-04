@@ -8,6 +8,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -269,6 +270,8 @@ type ClientWithResponsesInterface interface {
 type GetBooksResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *[]Book
+	JSON500      *Error
 }
 
 // Status returns HTTPResponse.Status
@@ -340,6 +343,20 @@ func ParseGetBooksResponse(rsp *http.Response) (*GetBooksResponse, error) {
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Book
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
 	}
 
 	return response, nil
@@ -442,14 +459,15 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/4xTTWsbMRD9K8u0p7BYTkIvuqUQQii0IQmUEnxQ1uNdtdFHRrNbjNn/XkbK2nGztLl4",
-	"x9LTmzfvSTtogovBo+cEegep6dCZXH4O4Zd8I4WIxBbz6kXPXSCpeBsRNCQm61sYa7hCTzi787V3N6Yt",
-	"BJtAzjBo6K3n8zOoJ7j1jC2S4G8Ny8l3ou8tP833/YGG3scy1kD43FvCNeiHacqJe5rt1SQv5Hutqz1n",
-	"ePyJDUv7S6Ji1bGFDlMy7Zzi8Q2JLFm/CQJeY2rIRrbBg4bby7v76uLmutoEqrjD6ntnWDKrHuWHsAnO",
-	"oV8bwVcJabCNTMDFLZjgUMOAlArp6WIpwkNEb6IFDeeL5UL8ioa7LF4Je65a5BlVyGRxwJRVpL9kiG3i",
-	"RP5zvQYNV5hFpNyCjENGSqAfdmCF7rlH2kIN3jjRbKZYyjWdc3AlQaYYfCpmny2X8mmCZ/RZ8Ik6Odx0",
-	"qSyjy9iPhBvQ8EEd3oR6eRAqW3XIxxCZbYnn2IA8TZV1V5MQOffp/zr+1b5cpZl+d0gDUrXfH2tQjIlf",
-	"JfTG8XvZn/fpmPzbl0w51pBym5JMT0+goWOOSSv1uzMsWS+a4NRwCuNq/BMAAP//bx0bAVUEAAA=",
+	"H4sIAAAAAAAC/5STT0/bQBDFv8pq2qMVGxCXvVEJIdSqRYBUVSiHZTOJl2b/MDtOFUX+7tWscUjAqugl",
+	"3nhn3/zmvfUObPQpBgycQe8g2xa9KcsvMf6WZ6KYkNhheXvRcRtJVrxNCBoykwsr6Cu4wkA4ufO98zdm",
+	"NQgsI3nDoKFzgc9OoRrLXWBcIUn9rWE5+cHqe8fr6b6/0NDHVPoKCJ87R7gA/TBOOWqPsx1M8iK+Z53v",
+	"NePjE1qW9pdEg1XHFnrM2aymiPt3IvLKhWWU4gVmSy6xiwE03F7e3auLm2u1jKS4RfWzNSyZqUf5IbTR",
+	"ewwLI/UqI22clQl4cAvGcqhgg5QH0ZNZI+AxYTDJgYazWTMTv5LhtsDXol5WK+QJKmRyuMFcKPIbDLFN",
+	"nCh/rheg4QoLRC4tyHhkpAz6YQdO5J47pC1UEIwXZjPGMlzTKQfnEmROMeTB7NOmkYeNgTEUYJPS2tmC",
+	"UD9lod4d6DlGXw5+JlyChk/16wdSv3wddfHtNSxDZLZDVsdulNFUGUKNVHLu/D+h/sUyXLKJ5ndIGyS1",
+	"3+8rqBkzH2T3Lot72Z928Fj8x9ci2VeQS5shs47WoGEdrVm3MbM+b5oG3nJ9k23lQmYTrNgxnmuZU9Z1",
+	"/ac1LLdnZqOvNyfQz/u/AQAA///8xxlbpwQAAA==",
 }
 
 // GetSwagger returns the Swagger specification corresponding to the generated code
