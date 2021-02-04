@@ -14,9 +14,30 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/deepmap/oapi-codegen/pkg/runtime"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
 )
+
+// Book defines model for Book.
+type Book struct {
+	Author   string `json:"Author"`
+	Genre    string `json:"Genre"`
+	NumPages uint32 `json:"NumPages"`
+	Rating   uint32 `json:"Rating"`
+	Title    string `json:"Title"`
+	Year     uint32 `json:"Year"`
+}
+
+// Error defines model for Error.
+type Error struct {
+	Message *string `json:"message,omitempty"`
+}
+
+// GetBooksParams defines parameters for GetBooks.
+type GetBooksParams struct {
+	Author *string `json:"author,omitempty"`
+}
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -91,8 +112,22 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GetBooks request
+	GetBooks(ctx context.Context, params *GetBooksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetTest request
 	GetTest(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GetBooks(ctx context.Context, params *GetBooksParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetBooksRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GetTest(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -104,6 +139,53 @@ func (c *Client) GetTest(ctx context.Context, reqEditors ...RequestEditorFn) (*h
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGetBooksRequest generates requests for GetBooks
+func NewGetBooksRequest(server string, params *GetBooksParams) (*http.Request, error) {
+	var err error
+
+	queryUrl, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	basePath := fmt.Sprintf("/books")
+	if basePath[0] == '/' {
+		basePath = basePath[1:]
+	}
+
+	queryUrl, err = queryUrl.Parse(basePath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryUrl.Query()
+
+	if params.Author != nil {
+
+		if queryFrag, err := runtime.StyleParam("form", true, "author", *params.Author); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryUrl.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryUrl.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewGetTestRequest generates requests for GetTest
@@ -177,8 +259,32 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GetBooks request
+	GetBooksWithResponse(ctx context.Context, params *GetBooksParams) (*GetBooksResponse, error)
+
 	// GetTest request
 	GetTestWithResponse(ctx context.Context) (*GetTestResponse, error)
+}
+
+type GetBooksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBooksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBooksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type GetTestResponse struct {
@@ -202,6 +308,15 @@ func (r GetTestResponse) StatusCode() int {
 	return 0
 }
 
+// GetBooksWithResponse request returning *GetBooksResponse
+func (c *ClientWithResponses) GetBooksWithResponse(ctx context.Context, params *GetBooksParams) (*GetBooksResponse, error) {
+	rsp, err := c.GetBooks(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBooksResponse(rsp)
+}
+
 // GetTestWithResponse request returning *GetTestResponse
 func (c *ClientWithResponses) GetTestWithResponse(ctx context.Context) (*GetTestResponse, error) {
 	rsp, err := c.GetTest(ctx)
@@ -209,6 +324,25 @@ func (c *ClientWithResponses) GetTestWithResponse(ctx context.Context) (*GetTest
 		return nil, err
 	}
 	return ParseGetTestResponse(rsp)
+}
+
+// ParseGetBooksResponse parses an HTTP response from a GetBooksWithResponse call
+func ParseGetBooksResponse(rsp *http.Response) (*GetBooksResponse, error) {
+	bodyBytes, err := ioutil.ReadAll(rsp.Body)
+	defer rsp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBooksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	}
+
+	return response, nil
 }
 
 // ParseGetTestResponse parses an HTTP response from a GetTestWithResponse call
@@ -233,6 +367,9 @@ func ParseGetTestResponse(rsp *http.Response) (*GetTestResponse, error) {
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
+	// (GET /books)
+	GetBooks(ctx echo.Context, params GetBooksParams) error
+
 	// (GET /test)
 	GetTest(ctx echo.Context) error
 }
@@ -240,6 +377,24 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// GetBooks converts echo context to params.
+func (w *ServerInterfaceWrapper) GetBooks(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetBooksParams
+	// ------------- Optional query parameter "author" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "author", ctx.QueryParams(), &params.Author)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter author: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GetBooks(ctx, params)
+	return err
 }
 
 // GetTest converts echo context to params.
@@ -279,6 +434,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.GET(baseURL+"/books", wrapper.GetBooks)
 	router.GET(baseURL+"/test", wrapper.GetTest)
 
 }
@@ -286,10 +442,14 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/2SPQUsEMQyF/0p55zIzu956UxBZPCi64EE81G7WFnea0sTxMPS/S0c8mUMSyEvyvhWB",
-	"58KZsgrc2ixSPjPcihNJqKlo4gyHp9vno7l+PJgzV6ORzEv0esP8ad57qhR4nimffNcbobqkQLDQpBeC",
-	"w58cFgtV+T26GyY0Cy6UfUlwuBqmYQ+L4jV2OxiVRHvzQVvhQnV7cTjB4Y702OcWlaRwFtqW9tP0H+Dh",
-	"Hq2HRTdHVeBeV3zVCxyiahE3jt/Ra8cZAs/jskN7az8BAAD//wmVj0ogAQAA",
+	"H4sIAAAAAAAC/4xTTWsbMRD9K8u0p7BYTkIvuqUQQii0IQmUEnxQ1uNdtdFHRrNbjNn/XkbK2nGztLl4",
+	"x9LTmzfvSTtogovBo+cEegep6dCZXH4O4Zd8I4WIxBbz6kXPXSCpeBsRNCQm61sYa7hCTzi787V3N6Yt",
+	"BJtAzjBo6K3n8zOoJ7j1jC2S4G8Ny8l3ou8tP833/YGG3scy1kD43FvCNeiHacqJe5rt1SQv5Hutqz1n",
+	"ePyJDUv7S6Ji1bGFDlMy7Zzi8Q2JLFm/CQJeY2rIRrbBg4bby7v76uLmutoEqrjD6ntnWDKrHuWHsAnO",
+	"oV8bwVcJabCNTMDFLZjgUMOAlArp6WIpwkNEb6IFDeeL5UL8ioa7LF4Je65a5BlVyGRxwJRVpL9kiG3i",
+	"RP5zvQYNV5hFpNyCjENGSqAfdmCF7rlH2kIN3jjRbKZYyjWdc3AlQaYYfCpmny2X8mmCZ/RZ8Ik6Odx0",
+	"qSyjy9iPhBvQ8EEd3oR6eRAqW3XIxxCZbYnn2IA8TZV1V5MQOffp/zr+1b5cpZl+d0gDUrXfH2tQjIlf",
+	"JfTG8XvZn/fpmPzbl0w51pBym5JMT0+goWOOSSv1uzMsWS+a4NRwCuNq/BMAAP//bx0bAVUEAAA=",
 }
 
 // GetSwagger returns the Swagger specification corresponding to the generated code

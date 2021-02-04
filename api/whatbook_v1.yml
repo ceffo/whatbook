@@ -5,7 +5,68 @@ info:
   version: '1.0'
 servers:
   - url: https://whatbook.com/v1
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+    Book:
+      type: object
+      required:
+        - Author
+        - Title
+        - Genre
+        - NumPages
+        - Year
+        - Rating
+      properties:
+        Author:
+          type: string
+        Title:
+          type: string
+        Genre:
+          type: string
+        NumPages:
+          type: integer
+          format: uint32
+        Year:
+          type: integer
+          format: uint32
+        Rating:
+          type: integer
+          format: uint32
+
 paths:
+  /books:
+    get:
+      description: Retrieves books recommendations
+      operationId: getBooks
+      responses:
+        '200':
+          description: Books query response
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+        '500':
+          description: Server Error
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Error'
+
+      parameters:
+        - name: author
+          in: query
+          required: false
+          schema:
+            type: string
+
   /test:
     get:
       responses:
