@@ -4,7 +4,7 @@ info:
   description: REST API for the WhatBook book recommendation service
   version: '1.0'
 servers:
-  - url: https://api.server.test/v1
+  - url: https://whatbook.com/v1
 paths:
   /test:
     get:
