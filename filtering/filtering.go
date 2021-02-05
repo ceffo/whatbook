@@ -1,6 +1,7 @@
 package filtering
 
 import (
+	"sort"
 	"strings"
 
 	api "whatbook.com/whatbook/api-library"
@@ -31,6 +32,13 @@ type Filter struct {
 	Era      Era
 }
 
+// FromAPIFilter converts the api filter
+func FromAPIFilter(apiFilter api.GetBooksParams) Filter {
+	return Filter{
+		Author: apiFilter.Author,
+	}
+}
+
 // getEra gets the era of a given year
 func getEra(year uint32) Era {
 	if year > modernYearThreshold {
@@ -59,6 +67,13 @@ func FilterBook(book *api.Book, filter Filter) bool {
 	}
 
 	return true
+}
+
+// SortBooks sorts a Book slice by decreasing rating
+func SortBooks(books []api.Book) {
+	sort.Slice(books, func(i, j int) bool {
+		return books[i].Rating > books[j].Rating
+	})
 }
 
 func filterOptionalString(filter *string, s string) bool {

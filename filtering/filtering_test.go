@@ -1,6 +1,8 @@
 package filtering
 
 import (
+	"math/rand"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -175,4 +177,21 @@ func TestFilterBook(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSortBooks(t *testing.T) {
+
+	var books []api.Book
+	numBooks := 20
+	for i := 0; i < numBooks; i++ {
+		books = append(books, api.Book{
+			Rating: 1 + rand.Uint32()%5,
+		})
+	}
+
+	SortBooks(books)
+
+	assert.True(t, sort.SliceIsSorted(books, func(i, j int) bool {
+		return books[i].Rating > books[j].Rating
+	}), "Books are not sorted by decreasing rating")
 }
