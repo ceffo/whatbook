@@ -10,7 +10,7 @@ const (
 	fileName = "../../books/db.json"
 )
 
-func Test_ReadJsonFile(t *testing.T) {
+func TestReadJsonFile(t *testing.T) {
 
 	db, err := NewJSONFileDb(fileName)
 	if assert.NoError(t, err, "Reading file must not return an error") {
