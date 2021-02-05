@@ -35,12 +35,28 @@ type Filter struct {
 // FromAPIFilter converts the api filter
 func FromAPIFilter(apiFilter api.GetBooksParams) Filter {
 	return Filter{
-		Author: apiFilter.Author,
+		Author:   apiFilter.Author,
+		Genre:    apiFilter.Genre,
+		NumPages: apiFilter.NumPages,
+		Era:      strToEra(apiFilter.Era),
 	}
 }
 
-// getEra gets the era of a given year
-func getEra(year uint32) Era {
+func strToEra(s *string) Era {
+	if s == nil {
+		return Dontcare
+	}
+	switch strings.ToLower(*s) {
+	case "modern":
+		return Modern
+	case "classical":
+		return Classical
+	default:
+		return Dontcare
+	}
+}
+
+func yearToEra(year uint32) Era {
 	if year > modernYearThreshold {
 		return Modern
 	}
@@ -61,7 +77,7 @@ func FilterBook(book *api.Book, filter Filter) bool {
 		return false
 	}
 
-	era := getEra(book.Year)
+	era := yearToEra(book.Year)
 	if filter.Era != Dontcare && filter.Era != era {
 		return false
 	}

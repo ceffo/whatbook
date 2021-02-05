@@ -5,15 +5,17 @@ import (
 	"io/ioutil"
 
 	api "whatbook.com/whatbook/api-library"
+	"whatbook.com/whatbook/filtering"
 	"whatbook.com/whatbook/repository"
 )
 
-type JsonFileDb struct {
+// Db represents a fake database
+type Db struct {
 	Books []api.Book
 }
 
-// NewJSONFileDb reads the json file and returns a JsonFileDb
-func NewJSONFileDb(fileName string) (repository.Db, error) {
+// NewDb reads the json file and returns a JsonFileDb
+func NewDb(fileName string) (repository.Db, error) {
 
 	content, err := ioutil.ReadFile(fileName)
 	if err != nil {
@@ -25,13 +27,24 @@ func NewJSONFileDb(fileName string) (repository.Db, error) {
 		return nil, err
 	}
 
-	return &JsonFileDb{
+	return &Db{
 		Books: books,
 	}, nil
 }
 
-// GetAllBooks returns all books read from the json file
-func (j *JsonFileDb) GetAllBooks() ([]api.Book, error) {
+// GetBooks retrieves books statisfing the given parameters
+func (j *Db) GetBooks(apiFilter api.GetBooksParams) ([]api.Book, error) {
 
-	return j.Books, nil
+	filter := filtering.FromAPIFilter(apiFilter)
+	var books []api.Book
+	// apply filter
+	for _, book := range j.Books {
+		if filtering.FilterBook(&book, filter) {
+			books = append(books, book)
+		}
+	}
+	// sort
+	filtering.SortBooks(books)
+
+	return books, nil
 }

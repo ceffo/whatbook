@@ -8,11 +8,11 @@ import (
 	"gopkg.in/tylerb/graceful.v1"
 	api "whatbook.com/whatbook/api-library"
 	"whatbook.com/whatbook/repository/jsonfile"
-
-	impl "whatbook.com/whatbook/impl"
+	whatbook "whatbook.com/whatbook/service"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/gommon/log"
 )
 
 const (
@@ -33,7 +33,7 @@ func main() {
 }
 
 func setupHandlers() (*echo.Echo, error) {
-	db, err := jsonfile.NewJSONFileDb(dbFile)
+	db, err := jsonfile.NewDb(dbFile)
 	if err != nil {
 		return nil, err
 	}
@@ -41,9 +41,11 @@ func setupHandlers() (*echo.Echo, error) {
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Logger.SetLevel(log.INFO)
+	e.Logger.SetOutput(os.Stdout)
 
-	handlers := impl.NewWhatBookAPI(db)
-	api.RegisterHandlers(e, handlers)
+	svc := whatbook.NewService(db, e.Logger)
+	api.RegisterHandlers(e, svc)
 
 	return e, nil
 }

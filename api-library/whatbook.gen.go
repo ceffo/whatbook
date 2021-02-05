@@ -37,7 +37,10 @@ type Error struct {
 
 // GetBooksParams defines parameters for GetBooks.
 type GetBooksParams struct {
-	Author *string `json:"author,omitempty"`
+	Author   *string `json:"author,omitempty"`
+	Genre    *string `json:"genre,omitempty"`
+	NumPages *uint32 `json:"numPages,omitempty"`
+	Era      *string `json:"era,omitempty"`
 }
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
@@ -166,6 +169,54 @@ func NewGetBooksRequest(server string, params *GetBooksParams) (*http.Request, e
 	if params.Author != nil {
 
 		if queryFrag, err := runtime.StyleParam("form", true, "author", *params.Author); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Genre != nil {
+
+		if queryFrag, err := runtime.StyleParam("form", true, "genre", *params.Genre); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.NumPages != nil {
+
+		if queryFrag, err := runtime.StyleParam("form", true, "numPages", *params.NumPages); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Era != nil {
+
+		if queryFrag, err := runtime.StyleParam("form", true, "era", *params.Era); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err
@@ -409,6 +460,27 @@ func (w *ServerInterfaceWrapper) GetBooks(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter author: %s", err))
 	}
 
+	// ------------- Optional query parameter "genre" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "genre", ctx.QueryParams(), &params.Genre)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter genre: %s", err))
+	}
+
+	// ------------- Optional query parameter "numPages" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "numPages", ctx.QueryParams(), &params.NumPages)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter numPages: %s", err))
+	}
+
+	// ------------- Optional query parameter "era" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "era", ctx.QueryParams(), &params.Era)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter era: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshalled arguments
 	err = w.Handler.GetBooks(ctx, params)
 	return err
@@ -459,15 +531,15 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/5STT0/bQBDFv8pq2qMVGxCXvVEJIdSqRYBUVSiHZTOJl2b/MDtOFUX+7tWscUjAqugl",
-	"3nhn3/zmvfUObPQpBgycQe8g2xa9KcsvMf6WZ6KYkNhheXvRcRtJVrxNCBoykwsr6Cu4wkA4ufO98zdm",
-	"NQgsI3nDoKFzgc9OoRrLXWBcIUn9rWE5+cHqe8fr6b6/0NDHVPoKCJ87R7gA/TBOOWqPsx1M8iK+Z53v",
-	"NePjE1qW9pdEg1XHFnrM2aymiPt3IvLKhWWU4gVmSy6xiwE03F7e3auLm2u1jKS4RfWzNSyZqUf5IbTR",
-	"ewwLI/UqI22clQl4cAvGcqhgg5QH0ZNZI+AxYTDJgYazWTMTv5LhtsDXol5WK+QJKmRyuMFcKPIbDLFN",
-	"nCh/rheg4QoLRC4tyHhkpAz6YQdO5J47pC1UEIwXZjPGMlzTKQfnEmROMeTB7NOmkYeNgTEUYJPS2tmC",
-	"UD9lod4d6DlGXw5+JlyChk/16wdSv3wddfHtNSxDZLZDVsdulNFUGUKNVHLu/D+h/sUyXLKJ5ndIGyS1",
-	"3+8rqBkzH2T3Lot72Z928Fj8x9ci2VeQS5shs47WoGEdrVm3MbM+b5oG3nJ9k23lQmYTrNgxnmuZU9Z1",
-	"/ac1LLdnZqOvNyfQz/u/AQAA///8xxlbpwQAAA==",
+	"H4sIAAAAAAAC/5RTTWvcMBD9K2bao1lvEnrRLYUQQqENSaCUsAdFO2srXX1kNHZZFv/3MvJ6PxpTNhdL",
+	"lmbevHnztAUTXAwePSdQW0imQafz9msIv2WNFCISW8yn1y03gWTHm4igIDFZX0Nfwi16wsmb76271/UA",
+	"sArkNIOC1nq+uoRyDLeesUaS+AfNknlm9JPl9XTdX6jpPJS+BMK31hIuQT2PXY7YY29HnezA91wXe8zw",
+	"8oqGpfwN0SDVqYQOU9L1FOP+HYgcWb8KErzEZMhGtsGDgoebx6fi+v6uWAUquMHiZ6NZZla8yIfQBOfQ",
+	"L7XEFwmps0Y64EEtGMOhhA4pDaAXs7kQDxG9jhYUXM3mM9Eram4y+UrQ865GnmCFTBY7TJlF+oeGyCZK",
+	"5J+7JSi4xUwi5RKkHTJSAvW8BStwby3SBkrw2glnPY5lsOmkgtOZ9W5+H070h4Efcs/x0zQckj5BQt86",
+	"MZxZ65Ss0WsowYUlkj9y1J7jQlyaYvBpcNLlfC6LCZ7R52noGNfWZH2r1yQj2R5Vs4wuJ34mXIGCT9Xh",
+	"9Ve7p19lUxycqIn0ZjDi6ajz3IrcXzGykrwvHyT1Py7DC5oo/ojUIRX7+76EijHxkTHfGe1J7qcVPAX/",
+	"8S1D9iWkXGYwZEtrUNAwx6Sq6k+jWSw+M8FV3QX0i/5vAAAA//8IyIVATAUAAA==",
 }
 
 // GetSwagger returns the Swagger specification corresponding to the generated code

@@ -66,6 +66,23 @@ paths:
           required: false
           schema:
             type: string
+        - name: genre
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: numPages
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: uint32
+        - name: era
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [classical, modern]
 
   /test:
     get:

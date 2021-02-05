@@ -11,19 +11,19 @@ import (
 
 func TestYearBelowThresholdIsClassical(t *testing.T) {
 	year := modernYearThreshold - 1
-	era := getEra(year)
+	era := yearToEra(year)
 	assert.Equal(t, era, Classical)
 }
 
 func TestYearEqualToThresholdIsClassical(t *testing.T) {
 	year := modernYearThreshold
-	era := getEra(year)
+	era := yearToEra(year)
 	assert.Equal(t, era, Classical)
 }
 
 func TestYearGreaterThanThresholdIsModern(t *testing.T) {
 	year := modernYearThreshold + 1
-	era := getEra(year)
+	era := yearToEra(year)
 	assert.Equal(t, era, Modern)
 }
 
